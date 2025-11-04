@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meal Planner - Login</title>
+  <link href="assets/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f8f9fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .login-card {
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      background: #fff;
+      width: 100%;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h3 class="text-center mb-4">Login</h3>
+    <form id="loginForm">
+      <div class="mb-3">
+        <label class="form-label">Username</label>
+        <input type="text" id="username" class="form-control" placeholder="Enter username" autocomplete="off" required>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Enter password" autocomplete="off" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Login</button>
+      <div id="loginError" class="text-danger mt-3" style="display:none;"></div>
+    </form>
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const errorDiv = document.getElementById('loginError');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault(); // prevent default form submit
+      errorDiv.style.display = 'none';
+
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      if (!username || !password) {
+        errorDiv.textContent = 'Please enter both username and password.';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch('login.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          window.location.href = 'index.php';
+        } else {
+          errorDiv.textContent = data.message || 'Invalid credentials';
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Network error. Try again. ' + err;
+        errorDiv.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
+
