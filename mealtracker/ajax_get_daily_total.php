@@ -27,5 +27,5 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$mealday,$userid]);
 $totals = $stmt->fetch(PDO::FETCH_ASSOC);
 
-echo number_format($totals["total_kcal"], 1);
+echo number_format($totals["total_kcal"], 1, '.', '');
 
