@@ -51,6 +51,7 @@ $userid = $_SESSION['user_id'];
         <?php endif; ?>
 
       <div>
+        <a href="clone_dish.php?id=<?php echo $dish['id']; ?>" class="btn btn-sm" onclick="return confirm('Sure you want to clone this dish?')">📄</a>
         <?php if ($userid == $dish['addedbyid']): ?>
         <a href="delete_dish.php?id=<?php echo $dish['id']; ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this dish?')">×</a>
         <?php endif; ?>

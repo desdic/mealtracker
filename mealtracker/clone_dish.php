@@ -1,33 +1,31 @@
 <?php
 session_start();
+if (!isset($_SESSION['user_id'])) {
+    header('Location: login.html');
+    exit;
+}
 require 'db.php';
 
-if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
-    exit;
-}
-
 $user_id = $_SESSION['user_id'];
-$dish_id = (int)($_POST['dish_id'] ?? 0);
 
-if ($dish_id <= 0) {
-    echo json_encode(['success' => false, 'message' => 'Invalid dish ID']);
-    exit;
+if (!isset($_GET['id'])) {
+    die('missing parameter');
 }
+
+$dish_id = (int)($_GET['id']);
+$dateformat = 'd/m/Y';
 
 try {
+	$today = date($dateformat);
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("SELECT * FROM dish WHERE id = ?");
     $stmt->execute([$dish_id]);
     $dish = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$dish || $dish['addedby'] != $user_id) {
-        throw new Exception("Dish not found or unauthorized");
-    }
 
-    $stmt = $pdo->prepare("INSERT INTO dish (name, addedby, kcal, protein, carbs, fat) VALUES (?, ?, ?, ?, ?, ?)");
-    $newName = "Copy of " . $dish['name'];
-    $stmt->execute([$newName, $user_id, $dish['kcal'], $dish['protein'], $dish['carbs'], $dish['fat']]);
+    $stmt = $pdo->prepare("INSERT INTO dish (name, addedby, kcal, protein, carbs, fat, amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $newName = $today . " " . $dish['name'];
+    $stmt->execute([$newName, $user_id, $dish['kcal'], $dish['protein'], $dish['carbs'], $dish['fat'], $dish['amount']]);
     $newDishId = $pdo->lastInsertId();
 
     $stmt = $pdo->prepare("SELECT * FROM food WHERE dishid = ?");
@@ -37,7 +35,7 @@ try {
                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $user_id,
-            "Copy of " . $food['title'],
+            $today . " " . $food['title'],
             $food['kcal'],
             $food['protein'],
             $food['carbs'],
@@ -51,15 +49,16 @@ try {
     $stmt->execute([$dish_id]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($items as $item) {
-        $stmt = $pdo->prepare("INSERT INTO dishitems (dishid, fooditem, amount) VALUES (?, ?, ?)");
-        $stmt->execute([$newDishId, $item['fooditem'], $item['amount']]);
+        $stmt = $pdo->prepare("INSERT INTO dishitems (dishid, fooditem, amount, addedby) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$newDishId, $item['fooditem'], $item['amount'], $user_id]);
     }
 
     $pdo->commit();
-    echo json_encode(['success' => true]);
+
+    header("Location: dishes.php"); exit;
 
 } catch (Exception $e) {
     $pdo->rollBack();
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+	die("Database error: " . $e->getMessage());
 }
 
