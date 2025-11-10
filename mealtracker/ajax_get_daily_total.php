@@ -13,19 +13,19 @@ if (!isset($_GET['mealday'])) {
 }
 
 $mealday = intval($_GET['mealday']);
+$userid = $_SESSION['user_id'];
 
-$stmt = $pdo->prepare("SELECT mi.amount, f.kcal, f.unit 
-                       FROM mealitems mi
-                       JOIN food f ON mi.fooditem = f.id
-                       WHERE mi.mealday = ?");
-$stmt->execute([$mealday]);
-$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$sql = "
+SELECT 
+  SUM(mi.amount / f.unit * f.kcal) total_kcal,
+  SUM(mi.amount / f.unit * f.protein) total_protein,
+  SUM(mi.amount / f.unit * f.carbs) total_carbs,
+  SUM(mi.amount / f.unit * f.fat) total_fat 
+FROM mealitems mi JOIN food f ON mi.fooditem = f.id WHERE mi.mealday = ? and mi.userid=?";
 
-$total = 0;
-foreach ($items as $i) {
-    $unit = $i['unit'] > 0 ? $i['unit'] : 1;
-    $total += ($i['amount'] / $unit) * $i['kcal'];
-}
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$mealday,$userid]);
+$totals = $stmt->fetch(PDO::FETCH_ASSOC);
 
-echo number_format($total, 1);
+echo number_format($totals["total_kcal"], 1);
 

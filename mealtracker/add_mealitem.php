@@ -14,6 +14,7 @@ if (!isset($_GET['mealday']) || !isset($_GET['mealtype'])) {
 $mealdayId = intval($_GET['mealday']);
 $mealtypeId = intval($_GET['mealtype']);
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+$userid = $_SESSION['user_id'];
 
 $stmt = $pdo->prepare("SELECT * FROM mealtypes WHERE id=?");
 $stmt->execute([$mealtypeId]);
@@ -22,22 +23,9 @@ $mealtype = $stmt->fetch(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("SELECT mi.*, f.title, f.kcal, f.unit
                        FROM mealitems mi
                        JOIN food f ON mi.fooditem=f.id
-                       WHERE mi.mealday=? AND mi.mealtype=?");
-$stmt->execute([$mealdayId, $mealtypeId]);
+                       WHERE mi.mealday=? AND mi.mealtype=? and mi.userid=?");
+$stmt->execute([$mealdayId, $mealtypeId,$userid]);
 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-$stmt2 = $pdo->prepare("SELECT mi.amount, f.kcal, f.unit 
-                        FROM mealitems mi
-                        JOIN food f ON mi.fooditem=f.id
-                        WHERE mi.mealday=?");
-$stmt2->execute([$mealdayId]);
-$allItems = $stmt2->fetchAll(PDO::FETCH_ASSOC);
-
-$dailyTotal = 0;
-foreach ($allItems as $i) {
-    $unit = $i['unit'] > 0 ? $i['unit'] : 1;
-    $dailyTotal += ($i['amount'] / $unit) * $i['kcal'];
-}
 
 function renderMealItemRow($item) {
     $amount = floatval($item['amount']);
@@ -84,7 +72,7 @@ function renderMealItemRow($item) {
 <div class="container mt-3">
     <button class="btn btn-secondary mb-3" onclick="window.history.back()">← Back</button>
     <h4><?php echo htmlspecialchars($mealtype['name']); ?> - <?php echo $date; ?></h4>
-    <div class="mb-2 fw-bold">Daily Total: <span id="daily-total-top"><?php echo number_format($dailyTotal,1); ?></span> kcal</div>
+    <div class="mb-2 fw-bold">Daily Total: <span id="daily-total-top">0</span> kcal</div>
     <div class="mb-3 fw-bold">Meal Total: <span id="meal-total-top">0</span> kcal</div>
 
     <div class="meal-card" id="meal-items-container">
@@ -131,7 +119,6 @@ window.computeRowKcal = function(row){
     return ds.unit>0 ? (parseFloat(ds.amount)/parseFloat(ds.unit))*parseFloat(ds.kcal) : 0;
 }
 
-// ✅ FIXED: dynamically fetch and update *real* daily total from DB
 window.recalcTotals = function(){
     let mealTotal = 0;
 
@@ -273,6 +260,15 @@ document.addEventListener('DOMContentLoaded', function(){
             }).catch(err=>{alert('Add failed: '+err.message); console.error(err);});
         }
     });
+
+    fetch('ajax_get_daily_total.php?mealday=<?php echo $mealdayId; ?>')
+        .then(r=>r.text())
+        .then(val=>{
+            const total = parseFloat(val);
+            if (!isNaN(total))
+                document.getElementById('daily-total-top').textContent = total.toFixed(1);
+        })
+        .catch(err=>console.error('Initial daily total fetch failed', err));
 
     recalcTotals();
 });
