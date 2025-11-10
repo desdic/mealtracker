@@ -21,7 +21,6 @@ header('Content-Type: application/json');
 
 $itemId = isset($_GET['id']) ? intval($_GET['id']) : null;
 $userid = $_SESSION['user_id'];
-$userid = 1;
 
 if (!$itemId) {
     ob_end_clean();
