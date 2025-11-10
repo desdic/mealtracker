@@ -84,6 +84,7 @@ function renderMealItemRow($item) {
                 <li class="nav-item"><a class="nav-link" href="users.php">Users</a></li>
                 <?php endif; ?>
                 <li class="nav-item"><a class="nav-link" href="nutrigraph.php">Nutri graph</a></li>
+                <li class="nav-item"><a class="nav-link" href="preferences.php">👤</a></li>
                 <li class="nav-item"><a class="nav-link" href="logout.php">Logout</a></li>
             </ul>
         </div>
