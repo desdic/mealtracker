@@ -15,8 +15,18 @@ if (isset($_GET['unit'])) {
 	$addon = " and unit=? ";
 	$params[] = $_GET['unit'];
 }
+$params[] = "$q%";
 
-$query = "SELECT id,title FROM food WHERE title LIKE ? " . $addon . "ORDER BY title LIMIT 10";
+$query = "
+	SELECT id,title 
+	FROM food 
+	WHERE title LIKE ? " . $addon . "
+	ORDER BY
+	CASE 
+	WHEN title like ? THEN 0
+	ELSE 1
+	END, title LIMIT 10";
+
 $stmt = $pdo->prepare($query);
 $stmt->execute($params);
 $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
