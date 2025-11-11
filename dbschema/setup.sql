@@ -90,7 +90,7 @@ CREATE TABLE dishitems(
 	addedby int not null,
 	primary key(id),
 	FOREIGN KEY(fooditem) REFERENCES food(id),
-	FOREIGN KEY(dishid) REFERENCES dish(id),
+	FOREIGN KEY(dishid) REFERENCES dish(id)  ON DELETE CASCADE,
 	foreign key(addedby) references user(id)
 );
 

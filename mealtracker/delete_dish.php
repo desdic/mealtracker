@@ -19,7 +19,6 @@ if ($dishid != $id) {
 	die("you don't own this dish");
 }
 
-$pdo->prepare("DELETE FROM dishitems WHERE dishid=? AND addedby=?")->execute([$id,$userid]);
 $pdo->prepare("DELETE FROM dish WHERE id=? AND addedby=?")->execute([$id,$userid]);
 header("Location: dishes.php");
 
