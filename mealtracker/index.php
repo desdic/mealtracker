@@ -1,13 +1,22 @@
 <?php
-include('db.php');
 session_start();
+
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.html');
     exit;
 }
 
-$date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+include('db.php');
+require_once 'user_preferences.php';
+
 $userid = $_SESSION['user_id'];
+
+$preferences = getUserPreferences($pdo, $userid);
+$theme = $preferences['theme'];
+$dateformat = $preferences['dateformat'];
+
+$date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+$formattedDate = date($dateformat, strtotime($date));
 
 $mealtypes = $pdo->query("SELECT * FROM mealtypes ORDER BY rank")->fetchAll(PDO::FETCH_ASSOC);
 
@@ -22,14 +31,16 @@ if(!$mealday){
 }
 $mealdayId = $mealday['id'];
 
-function renderMealItemRow($item) {
+function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
     $amount = floatval($item['amount']);
     $kcal = floatval($item['kcal']);
     $unit = floatval($item['unit']);
     if($unit <= 0) $unit = 1;
     $itemKcal = ($unit > 0) ? ($amount / $unit) * $kcal : 0;
 
-    return '<div class="meal-item-row" id="mealitem-'.$item['id'].'" '
+    $row_class = $theme === 'dark' ? 'meal-item-row-dark' : 'meal-item-row-light';
+
+    return '<div class="meal-item-row '.$row_class.'" id="mealitem-'.$item['id'].'" '
         .'data-kcal="'.htmlspecialchars($kcal).'" '
         .'data-unit="'.htmlspecialchars($unit).'" '
         .'data-foodid="'.htmlspecialchars($item['fooditem']).'" '
@@ -45,29 +56,33 @@ function renderMealItemRow($item) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
-<head>
+<html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>"> <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Meal Tracker</title>
 <link href="assets/bootstrap.min.css" rel="stylesheet">
 <style>
 .autocomplete-list { z-index: 1100; max-height: 200px; overflow-y: auto; }
-.meal-item-row:nth-child(even){ background-color:#f8f9fa; }
-.meal-item-row:nth-child(odd){ background-color:#ffffff; }
+/* <--- MODIFIED: Conditional background colors for rows based on theme */
+<?php if ($theme === 'dark'): ?>
+.meal-item-row-dark:nth-child(even){ background-color:#343a40; } /* bg-secondary darker */
+.meal-item-row-dark:nth-child(odd){ background-color:#212529; } /* bg-dark */
+.meal-item-row-dark .meal-item-kcal { color:#adb5bd; } /* text-light muted */
+<?php else: ?>
+.meal-item-row-light:nth-child(even){ background-color:#f8f9fa; } /* bg-light */
+.meal-item-row-light:nth-child(odd){ background-color:#ffffff; } /* bg-white */
+.meal-item-row-light .meal-item-kcal { color:#333; } /* dark text */
+<?php endif; ?>
 .meal-item-row{ padding:0.5rem; border-radius:0.25rem; margin-bottom:0.25rem; }
 .meal-item-food{ cursor:pointer; }
 .autocomplete-list .item { padding:0.3rem 0.5rem; cursor:pointer; }
-.autocomplete-list .item:hover { background:#f1f1f1; }
-.meal-item-kcal { font-size:0.9rem; color:#333; }
+/* <--- MODIFIED: Autocomplete list hover */
+.autocomplete-list .item:hover { background:<?php echo $theme === 'dark' ? '#495057' : '#f1f1f1'; ?>; }
 .mealtype-header .collapse-toggle { transition: transform 0.2s; }
 .mealtype-header .collapse-toggle[aria-expanded="true"] { transform: rotate(180deg); }
 </style>
 </head>
-<body class="bg-light">
-
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3">
-    <div class="container-fluid">
+<body class="<?php echo $theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'; ?>"> <nav class="navbar navbar-expand-lg <?php echo $theme === 'dark' ? 'navbar-dark bg-dark' : 'navbar-light bg-white'; ?> shadow-sm mb-3"> <div class="container-fluid">
         <a class="navbar-brand" href="#">MealTracker</a>
         <div class="ms-auto me-3">
             <?php echo htmlspecialchars($_SESSION['username']); ?>
@@ -94,7 +109,7 @@ function renderMealItemRow($item) {
 <div class="container mt-3">
 <div class="d-flex justify-content-between align-items-center mb-3">
     <a href="?date=<?php echo date('Y-m-d', strtotime("$date -1 day")); ?>" class="btn btn-secondary">&laquo; Prev</a>
-    <h4 class="text-center mb-0"><?php echo $date; ?></h4>
+    <h4 class="text-center mb-0"><?php echo $formattedDate; ?></h4>
     <a href="?date=<?php echo date('Y-m-d', strtotime("$date +1 day")); ?>" class="btn btn-secondary">Next &raquo;</a>
 </div>
 
@@ -108,19 +123,15 @@ function renderMealItemRow($item) {
     $stmt->execute([$mealdayId, $mt['id']]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<div class="card mb-3">
-    <div class="card-header mealtype-header d-flex justify-content-between align-items-center">
-        <a href="add_mealitem.php?mealday=<?php echo $mealdayId; ?>&mealtype=<?php echo $mt['id']; ?>&date=<?php echo $date; ?>" class="text-decoration-none flex-grow-1">
-            <strong><?php echo htmlspecialchars($mt['name']); ?> (<span id="total-kcal-<?php echo $mt['id']; ?>">0</span> kcal)</strong>
+<div class="card mb-3 <?php echo $theme === 'dark' ? 'bg-secondary text-light border-light' : ''; ?>"> <div class="card-header mealtype-header d-flex justify-content-between align-items-center <?php echo $theme === 'dark' ? 'bg-dark border-light' : 'bg-white'; ?>"> <a href="add_mealitem.php?mealday=<?php echo $mealdayId; ?>&mealtype=<?php echo $mt['id']; ?>&date=<?php echo $date; ?>" class="text-decoration-none flex-grow-1 <?php echo $theme === 'dark' ? 'text-light' : 'text-dark'; ?>"> <strong><?php echo htmlspecialchars($mt['name']); ?> (<span id="total-kcal-<?php echo $mt['id']; ?>">0</span> kcal)</strong>
         </a>
-        <button class="btn btn-sm btn-outline-secondary collapse-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<?php echo $mt['id']; ?>" aria-expanded="false" aria-controls="collapse-<?php echo $mt['id']; ?>">
+        <button class="btn btn-sm btn-outline-secondary collapse-toggle <?php echo $theme === 'dark' ? 'text-light border-light' : ''; ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<?php echo $mt['id']; ?>" aria-expanded="false" aria-controls="collapse-<?php echo $mt['id']; ?>">
             &#9660;
         </button>
     </div>
     <div class="collapse" id="collapse-<?php echo $mt['id']; ?>">
         <div class="card-body" id="mealtype-<?php echo $mt['id']; ?>">
-            <?php foreach($items as $mi): echo renderMealItemRow($mi); endforeach; ?>
-        </div>
+            <?php foreach($items as $mi): echo renderMealItemRow($mi, $theme); endforeach; ?> </div>
     </div>
 </div>
 <?php endforeach; ?>
@@ -129,11 +140,8 @@ function renderMealItemRow($item) {
 
 <div class="modal fade" id="mealItemModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Meal Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
+        <div class="modal-content <?php echo $theme === 'dark' ? 'bg-dark text-light' : ''; ?>"> <div class="modal-header <?php echo $theme === 'dark' ? 'border-secondary' : ''; ?>"> <h5 class="modal-title">Edit Meal Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" <?php echo $theme === 'dark' ? 'data-bs-theme="dark"' : ''; ?>></button> </div>
             <div class="modal-body">
                 <input type="hidden" id="modalMealType">
                 <input type="hidden" id="modalItemId">
@@ -141,7 +149,7 @@ function renderMealItemRow($item) {
                     <label>Food</label>
                     <input type="text" id="modalFoodSearch" class="form-control" autocomplete="off" disabled>
                     <input type="hidden" id="modalFoodId">
-                    <div class="autocomplete-list position-absolute bg-white border w-100"></div>
+                    <div class="autocomplete-list position-absolute border w-100 <?php echo $theme === 'dark' ? 'bg-dark border-light' : 'bg-white'; ?>"></div> 
                 </div>
                 <div class="mb-3">
                     <label>Amount</label>
@@ -149,8 +157,7 @@ function renderMealItemRow($item) {
                 </div>
                 <div class="mb-3">kcal: <span id="modalKcalPreview"></span></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-primary" id="modalSaveBtn">Save</button>
+            <div class="modal-footer <?php echo $theme === 'dark' ? 'border-secondary' : ''; ?>"> <button type="button" class="btn btn-primary" id="modalSaveBtn">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             </div>
         </div>
@@ -293,4 +300,3 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
-

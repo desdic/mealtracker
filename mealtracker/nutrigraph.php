@@ -6,8 +6,11 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require 'db.php';
+require_once 'user_preferences.php';
 
 $userid = $_SESSION['user_id'];
+$preferences = getUserPreferences($pdo, $userid);
+$theme = $preferences['theme'];
 
 $stmt = $pdo->prepare("
     SELECT d.date, 
@@ -40,24 +43,27 @@ foreach ($data as $row) {
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nutrition Chart</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="assets/bootstrap.min.css" rel="stylesheet">
+<script src="assets/chart.js"></script>
 </head>
-<body class="bg-light">
+<body class="<?php echo $theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'; ?>">
+
 <div class="container mt-3">
 
-  <h3>Nutrition Over Time</h3>
 
-  <div class="mb-3">
+<nav class="navbar navbar-expand-lg <?php echo $theme === 'dark' ? 'navbar-dark bg-dark' : 'navbar-light bg-white'; ?> shadow-sm mb-3">
+  <div class="container-fluid">
     <a href="index.php" class="btn btn-secondary">&laquo; Back</a>
+    <span class="navbar-brand mx-auto">Nutrition over time</span>
   </div>
+</nav>
 
-  <div class="card shadow-sm">
+  <div class="card mb-3 <?php echo $theme === 'dark' ? 'bg-secondary text-light' : ''; ?> shadow-sm">
     <div class="card-body">
       <canvas id="nutritionChart"></canvas>
     </div>
@@ -71,19 +77,32 @@ const nutritionChart = new Chart(ctx, {
     data: {
         labels: <?= json_encode($dates) ?>,
         datasets: [
-            { label: 'Calories', data: <?= json_encode($kcal) ?>, borderColor: 'red', backgroundColor: 'rgba(255,0,0,0.2)', tension: 0.2 }
+            { 
+                label: 'Calories', 
+                data: <?= json_encode($kcal) ?>, 
+                borderColor: '<?php echo $theme === 'dark' ? "rgba(255, 99, 132, 1)" : "red"; ?>', 
+                backgroundColor: '<?php echo $theme === 'dark' ? "rgba(255, 99, 132, 0.2)" : "rgba(255,0,0,0.2)"; ?>', 
+                tension: 0.2 
+            }
         ]
     },
     options: {
         responsive: true,
         plugins: {
-            legend: { position: 'top' },
+            legend: { labels: { color: '<?php echo $theme === 'dark' ? "#fff" : "#000"; ?>' }, position: 'top' },
             tooltip: { mode: 'index', intersect: false }
         },
         interaction: { mode: 'nearest', axis: 'x', intersect: false },
         scales: {
-            x: { title: { display: true, text: 'Date' } },
-            y: { beginAtZero: true, title: { display: true, text: 'Amount' } }
+            x: { 
+                title: { display: true, text: 'Date', color: '<?php echo $theme === 'dark' ? "#fff" : "#000"; ?>' },
+                ticks: { color: '<?php echo $theme === 'dark' ? "#fff" : "#000"; ?>' }
+            },
+            y: { 
+                beginAtZero: true, 
+                title: { display: true, text: 'Amount', color: '<?php echo $theme === 'dark' ? "#fff" : "#000"; ?>' },
+                ticks: { color: '<?php echo $theme === 'dark' ? "#fff" : "#000"; ?>' }
+            }
         }
     }
 });

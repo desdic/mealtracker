@@ -15,9 +15,7 @@ $userid = $_SESSION['user_id'];
 $stmt = $pdo->prepare("SELECT username, firstname, lastname FROM user WHERE id = ?");
 $stmt->execute([$userid]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
-if (!$user) {
-    die("User not found.");
-}
+if (!$user) die("User not found.");
 
 $preferences = getUserPreferences($pdo, $userid);
 
@@ -42,7 +40,6 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'profile') {
         $stmt = $pdo->prepare("UPDATE user SET firstname = ?, lastname = ? WHERE id = ?");
         $stmt->execute([$firstname, $lastname, $userid]);
 
-        // Update password if provided
         if (!empty($new_password)) {
             if ($new_password !== $confirm_password) {
                 $message_profile = '<div class="alert alert-danger">Passwords do not match.</div>';
@@ -67,7 +64,7 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'profile') {
 if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
     $new_prefs = [
         'dateformat' => $_POST['dateformat'] ?? 'd/m/Y',
-        // 'theme' => $_POST['theme'] ?? 'light'
+        'theme' => $_POST['theme'] ?? 'light'
     ];
 
     $stmt = $pdo->prepare("
@@ -78,24 +75,27 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
 
     foreach ($new_prefs as $key => $value) {
         $stmt->execute([$userid, $key, $value]);
-        $preferences[$key] = $value; // update locally too
+        $preferences[$key] = $value;
     }
 
     $message_prefs = '<div class="alert alert-success">Preferences updated successfully.</div>';
 }
+
+$theme = $preferences['theme'] ?? 'light';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>User Preferences</title>
 <link href="assets/bootstrap.min.css" rel="stylesheet">
 </head>
-<body class="bg-light">
-<nav class="navbar navbar-light bg-white shadow-sm mb-3">
+<body class="<?php echo $theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'; ?>">
+
+<nav class="navbar <?php echo $theme === 'dark' ? 'navbar-dark bg-dark' : 'navbar-light bg-white'; ?> shadow-sm mb-3">
     <div class="container-fluid">
-        <a href="index.php" class="btn btn-secondary">&laquo; Back</a>
+        <a href="index.php" class="btn <?php echo $theme === 'dark' ? 'btn-outline-light' : 'btn-secondary'; ?>">&laquo; Back</a>
         <span class="navbar-brand mx-auto">User Preferences</span>
     </div>
 </nav>
@@ -104,7 +104,7 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
 
     <!-- Profile Info -->
     <?php echo $message_profile; ?>
-    <div class="card shadow-sm mb-4">
+    <div class="card shadow-sm mb-4 <?php echo $theme === 'dark' ? 'bg-secondary text-light' : ''; ?>">
         <div class="card-body">
             <h5 class="card-title mb-3">Profile Information</h5>
             <form method="post">
@@ -115,22 +115,22 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
                 </div>
                 <div class="mb-3">
                     <label class="form-label">First Name</label>
-                    <input type="text" name="firstname" class="form-control" value="<?php echo htmlspecialchars($user['firstname']); ?>" required>
+                    <input type="text" name="firstname" class="form-control <?php echo $theme === 'dark' ? 'bg-dark text-light border-light' : ''; ?>" value="<?php echo htmlspecialchars($user['firstname']); ?>" required>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Last Name</label>
-                    <input type="text" name="lastname" class="form-control" value="<?php echo htmlspecialchars($user['lastname']); ?>" required>
+                    <input type="text" name="lastname" class="form-control <?php echo $theme === 'dark' ? 'bg-dark text-light border-light' : ''; ?>" value="<?php echo htmlspecialchars($user['lastname']); ?>" required>
                 </div>
 
                 <hr>
                 <h6 class="text-muted">Change Password</h6>
                 <div class="mb-3">
                     <label class="form-label">New Password</label>
-                    <input type="password" name="new_password" class="form-control" placeholder="Leave blank to keep current">
+                    <input type="password" name="new_password" class="form-control <?php echo $theme === 'dark' ? 'bg-dark text-light border-light' : ''; ?>" placeholder="Leave blank to keep current">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Confirm New Password</label>
-                    <input type="password" name="confirm_password" class="form-control">
+                    <input type="password" name="confirm_password" class="form-control <?php echo $theme === 'dark' ? 'bg-dark text-light border-light' : ''; ?>">
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Save Profile</button>
             </form>
@@ -139,14 +139,14 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
 
     <!-- Preferences -->
     <?php echo $message_prefs; ?>
-    <div class="card shadow-sm">
+    <div class="card shadow-sm <?php echo $theme === 'dark' ? 'bg-secondary text-light' : ''; ?>">
         <div class="card-body">
             <h5 class="card-title mb-3">Preferences</h5>
             <form method="post">
                 <input type="hidden" name="form_type" value="preferences">
                 <div class="mb-3">
                     <label class="form-label">Date Format</label>
-					<select name="dateformat" class="form-select">
+					<select name="dateformat" class="form-select <?php echo $theme === 'dark' ? 'bg-dark text-light border-light' : ''; ?>">
 						<?php foreach ($dateFormats as $format => $label): ?>
 							<option value="<?php echo $format; ?>" <?php echo ($preferences['dateformat'] === $format) ? 'selected' : ''; ?>>
 								<?php echo htmlspecialchars($label); ?>
@@ -155,16 +155,13 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
 					</select>
                 </div>
 
-                <!-- Example of easy expansion -->
-                <!--
                 <div class="mb-3">
                     <label class="form-label">Theme</label>
-                    <select name="theme" class="form-select">
-                        <option value="light" <?php echo ($preferences['theme'] ?? 'light') === 'light' ? 'selected' : ''; ?>>Light</option>
-                        <option value="dark" <?php echo ($preferences['theme'] ?? 'light') === 'dark' ? 'selected' : ''; ?>>Dark</option>
+                    <select name="theme" class="form-select <?php echo $theme === 'dark' ? 'bg-dark text-light border-light' : ''; ?>">
+                        <option value="light" <?php echo $theme === 'light' ? 'selected' : ''; ?>>Light</option>
+                        <option value="dark" <?php echo $theme === 'dark' ? 'selected' : ''; ?>>Dark</option>
                     </select>
                 </div>
-                -->
 
                 <button type="submit" class="btn btn-success w-100">Save Preferences</button>
             </form>
