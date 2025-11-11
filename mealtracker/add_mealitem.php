@@ -6,6 +6,11 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include('db.php');
+require_once 'user_preferences.php';
+
+$userid = $_SESSION['user_id'];
+$preferences = getUserPreferences($pdo, $userid);
+$theme = $preferences['theme'];
 
 if (!isset($_GET['mealday']) || !isset($_GET['mealtype'])) {
     die("Error: Missing parameters.");
@@ -14,7 +19,6 @@ if (!isset($_GET['mealday']) || !isset($_GET['mealtype'])) {
 $mealdayId = intval($_GET['mealday']);
 $mealtypeId = intval($_GET['mealtype']);
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
-$userid = $_SESSION['user_id'];
 
 $stmt = $pdo->prepare("SELECT * FROM mealtypes WHERE id=?");
 $stmt->execute([$mealtypeId]);
@@ -42,7 +46,7 @@ function renderMealItemRow($item) {
             .'<div class="meal-item-food flex-grow-1" onclick="editMealItem('.$item['id'].')">'
                 .htmlspecialchars($item['title']).' × '.$amount
             .'</div>'
-            .'<button class="btn btn-sm btn-danger" onclick="deleteMealItem('.$item['id'].', true)">×</button>'
+            .'<button class="btn btn-sm btn-danger" onclick="confirmDelete('.$item['id'].')">×</button>'
         .'</div>'
         .'<div class="meal-item-kcal">('.number_format($kcal,1).' kcal)</div>'
     .'</div>';
@@ -56,18 +60,20 @@ function renderMealItemRow($item) {
 <title>Meal Items - <?php echo htmlspecialchars($mealtype['name']); ?></title>
 <link href="assets/bootstrap.min.css" rel="stylesheet">
 <style>
-.meal-card{border-radius:1rem; padding:1rem; background-color:#fff; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
-.meal-item-row{padding:0.5rem;border-radius:0.25rem;margin-bottom:0.25rem; border:1px solid #ddd;}
-.meal-item-row:nth-child(even){background-color:#f8f9fa;}
-.meal-item-row:nth-child(odd){background-color:#ffffff;}
-.meal-item-food{flex-grow:1;cursor:pointer;}
-.meal-item-kcal{font-size:0.9rem;color:#333;margin-top:0.2rem;}
-.autocomplete-list{z-index:1100;max-height:200px;overflow-y:auto;}
+body.bg-light, body.bg-dark { background-color: <?php echo $theme === 'dark' ? '#121212' : '#f8f9fa'; ?>; color: <?php echo $theme === 'dark' ? '#eee' : '#000'; ?>; }
+.meal-card{border-radius:1rem; padding:1rem; background-color: <?php echo $theme === 'dark' ? '#1e1e1e' : '#fff'; ?>; box-shadow:0 2px 6px rgba(0,0,0,0.1);}
+.meal-item-row{padding:0.5rem;border-radius:0.25rem;margin-bottom:0.25rem; border:1px solid <?php echo $theme === 'dark' ? '#333' : '#ddd'; ?>;}
+.meal-item-row:nth-child(even){background-color: <?php echo $theme === 'dark' ? '#2a2a2a' : '#f8f9fa'; ?>;}
+.meal-item-row:nth-child(odd){background-color: <?php echo $theme === 'dark' ? '#1e1e1e' : '#ffffff'; ?>;}
+.meal-item-food{flex-grow:1;cursor:pointer; color: <?php echo $theme === 'dark' ? '#fff' : '#000'; ?>;}
+.meal-item-kcal{font-size:0.9rem;color: <?php echo $theme === 'dark' ? '#ccc' : '#333'; ?>;margin-top:0.2rem;}
+.autocomplete-list{z-index:1100;max-height:200px;overflow-y:auto; background-color: <?php echo $theme === 'dark' ? '#2a2a2a' : '#fff'; ?>; color: <?php echo $theme === 'dark' ? '#eee' : '#000'; ?>; border: 1px solid <?php echo $theme === 'dark' ? '#555' : '#ddd'; ?>;}
 .autocomplete-list .item{padding:0.3rem 0.5rem;cursor:pointer;}
-.autocomplete-list .item:hover{background:#f1f1f1;}
+.autocomplete-list .item:hover{background: <?php echo $theme === 'dark' ? '#3a3a3a' : '#f1f1f1'; ?>;}
+#modalFoodSearch, #modalAmount { background-color: <?php echo $theme === 'dark' ? '#1e1e1e' : '#fff'; ?>; color: <?php echo $theme === 'dark' ? '#eee' : '#000'; ?>; border: 1px solid <?php echo $theme === 'dark' ? '#555' : '#ccc'; ?>; }
 </style>
 </head>
-<body class="bg-light">
+<body class="bg-<?php echo $theme; ?>">
 
 <div class="container mt-3">
     <button class="btn btn-secondary mb-3" onclick="window.history.back()">← Back</button>
@@ -85,7 +91,7 @@ function renderMealItemRow($item) {
 <!-- Modal -->
 <div class="modal fade" id="mealItemModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content">
+        <div class="modal-content" style="background-color: <?php echo $theme === 'dark' ? '#1e1e1e' : '#fff'; ?>; color: <?php echo $theme === 'dark' ? '#eee' : '#000'; ?>;">
             <div class="modal-header">
                 <h5 class="modal-title">Meal Item</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -97,7 +103,7 @@ function renderMealItemRow($item) {
                     <label>Food</label>
                     <input type="text" id="modalFoodSearch" class="form-control" autocomplete="off">
                     <input type="hidden" id="modalFoodId">
-                    <div class="autocomplete-list position-absolute bg-white border w-100"></div>
+                    <div class="autocomplete-list position-absolute w-100"></div>
                 </div>
                 <div class="mb-3">
                     <label>Amount</label>
@@ -112,7 +118,7 @@ function renderMealItemRow($item) {
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="assets/bootstrap.bundle.min.js"></script>
 <script>
 window.computeRowKcal = function(row){
     const ds = row.dataset;
@@ -121,16 +127,11 @@ window.computeRowKcal = function(row){
 
 window.recalcTotals = function(){
     let mealTotal = 0;
-
-    // Calculate current meal total
     document.querySelectorAll('#meal-items-container .meal-item-row').forEach(row=>{
         mealTotal += computeRowKcal(row);
     });
-
-    // Update meal total instantly
     document.getElementById('meal-total-top').textContent = mealTotal.toFixed(1);
 
-    // Fetch updated daily total from DB (includes all mealtypes)
     fetch('ajax_get_daily_total.php?mealday=<?php echo $mealdayId; ?>')
         .then(r=>r.text())
         .then(val=>{
@@ -141,8 +142,42 @@ window.recalcTotals = function(){
         .catch(err=>console.error('Daily total fetch failed', err));
 }
 
-window.deleteMealItem = function(id, confirmDelete){
-    if(confirmDelete && !confirm('Delete this item?')) return;
+// Custom dark/light confirm for delete
+function confirmDelete(id){
+    const msg = 'Delete this item?';
+    if(<?php echo $theme === 'dark' ? 'true' : 'false'; ?>){
+        // Dark-themed confirm using Bootstrap modal
+        let modalDiv = document.createElement('div');
+        modalDiv.innerHTML = `<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content" style="background-color:#1e1e1e;color:#eee;">
+                    <div class="modal-body">${msg}</div>
+                    <div class="modal-footer">
+                        <button id="confirmYes" class="btn btn-danger">Yes</button>
+                        <button id="confirmNo" class="btn btn-secondary">No</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+        document.body.appendChild(modalDiv);
+        const bsModal = new bootstrap.Modal(modalDiv.querySelector('.modal'));
+        bsModal.show();
+        modalDiv.querySelector('#confirmYes').onclick = ()=>{
+            deleteMealItem(id,false);
+            bsModal.hide();
+            modalDiv.remove();
+        };
+        modalDiv.querySelector('#confirmNo').onclick = ()=>{
+            bsModal.hide();
+            modalDiv.remove();
+        };
+    } else {
+        if(confirm(msg)) deleteMealItem(id,false);
+    }
+}
+
+window.deleteMealItem = function(id, confirmDeleteFlag){
+    if(confirmDeleteFlag) return;
     fetch('ajax_delete_mealitem.php',{
         method:'POST',
         headers:{'Content-Type':'application/x-www-form-urlencoded'},
@@ -195,6 +230,8 @@ document.addEventListener('DOMContentLoaded', function(){
                 const d = document.createElement('div');
                 d.className = 'item';
                 d.textContent = f.title;
+                d.style.backgroundColor = '<?php echo $theme === "dark" ? "#2a2a2a" : "#fff"; ?>';
+                d.style.color = '<?php echo $theme === "dark" ? "#eee" : "#000"; ?>';
                 d.addEventListener('click', ()=>{
                     modalFoodInput.value = f.title;
                     modalFoodId.value = f.id;
@@ -250,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 div.innerHTML = `
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <div class="meal-item-food flex-grow-1" onclick="editMealItem(${item.id})">${item.title} × ${item.amount}</div>
-                        <button class="btn btn-sm btn-danger" onclick="deleteMealItem(${item.id}, true)">×</button>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDelete(${item.id})">×</button>
                     </div>
                     <div class="meal-item-kcal">(${((item.amount/item.unit)*item.kcal).toFixed(1)} kcal)</div>
                 `;

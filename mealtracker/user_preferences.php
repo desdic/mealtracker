@@ -12,6 +12,10 @@ function getUserPreferences($pdo, $userid) {
 		$preferences['dateformat'] = 'd/m/Y';
 	}
 
+	if (!isset($preferences['theme'])) {
+		$preferences['theme'] = 'light';
+	}
+
 	return $preferences;
 }
 

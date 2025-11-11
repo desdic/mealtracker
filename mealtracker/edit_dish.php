@@ -7,9 +7,14 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include('db.php');
+// ADDED for theming
+require_once 'user_preferences.php';
 
 $dishId = $_GET['id'];
 $userid = $_SESSION['user_id'];
+// ADDED for theming
+$preferences = getUserPreferences($pdo, $userid);
+$theme = $preferences['theme'] ?? 'light';
 
 $stmt = $pdo->prepare("SELECT id FROM dish WHERE id=? and addedby=?");
 $stmt->execute([$dishId,$userid]);
@@ -66,65 +71,78 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
 }
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Edit Dish</title>
 <link href="assets/bootstrap.min.css" rel="stylesheet">
 <style>
+/* Adjusting styles for theming */
 .autocomplete-suggestions {
-    border: 1px solid #ddd;
+    /* Use CSS variables or theme-based values for border/background/text */
+    border: 1px solid var(--bs-border-color);
     max-height: 150px;
     overflow-y: auto;
     position: absolute;
-    background: white;
+    /* Use Bootstrap utility for background/text color based on theme */
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
     z-index: 1000;
     width: 100%;
+    /* Added to prevent it from bleeding out of container */
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175); 
 }
 .autocomplete-suggestion {
     padding: 5px 10px;
     cursor: pointer;
 }
 .autocomplete-suggestion:hover {
-    background: #f0f0f0;
+    /* Use Bootstrap primary color for hover */
+    background: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary-text-emphasis);
 }
 </style>
 </head>
-<body class="bg-light">
+<body class="<?php echo $theme==='dark'?'bg-dark text-light':'bg-light text-dark'; ?>">
 <div class="container mt-3">
-<h3>Edit Dish</h3>
+
+<nav class="navbar navbar-expand-lg <?php echo $theme === 'dark' ? 'navbar-dark bg-dark' : 'navbar-light bg-white'; ?> shadow-sm mb-3">
+  <div class="container-fluid">
+    <a href="dishes.php" class="btn btn-secondary">&laquo; Back</a>
+    <span class="navbar-brand mx-auto">Edit dish</span>
+    <a href="index.php" class="btn btn-secondary">&laquo; Home</a>
+  </div>
+</nav>
 
 <div class="mb-3">
-  <strong>Total kcal: <span id="totalKcal">0.0</span></strong>
+    <strong>Total kcal: <span id="totalKcal">0.0</span></strong>
 </div>
 
 <form method="post" id="dishForm">
-  <div class="mb-3">
-    <label>Name</label>
-    <input type="text" name="name" class="form-control" value="<?php echo htmlspecialchars($dish['name']); ?>" required autocomplete="off">
-  </div>
-
-  <h5>Ingredients</h5>
-  <div class="mb-2">
-    <button type="button" class="btn btn-secondary" onclick="addIngredient()">+ Add Ingredient</button>
-  </div>
-
-  <div id="ingredients" style="position: relative;">
-    <?php foreach($dishItems as $di): ?>
-    <div class="d-flex mb-2 ingredient-row">
-      <input type="text" name="food_title[]" class="form-control me-2 food-search" placeholder="Search food..." value="<?php echo htmlspecialchars($di['title']); ?>" required autocomplete="off">
-      <input type="number" step="0.01" name="amount[]" class="form-control me-2 amount-input" value="<?php echo $di['amount']; ?>" required>
-      <button type="button" class="btn btn-danger" onclick="this.parentNode.remove(); updateTotal();">×</button>
+    <div class="mb-3">
+        <label>Name</label>
+        <input type="text" name="name" class="form-control" value="<?php echo htmlspecialchars($dish['name']); ?>" required autocomplete="off">
     </div>
-    <?php endforeach; ?>
-  </div>
 
-  <div class="d-flex gap-2 mt-3">
-    <button class="btn btn-primary">Save Dish</button>
-    <a href="dishes.php" class="btn btn-secondary">Back</a>
-    <a href="index.php" class="btn btn-secondary">Home</a>
-  </div>
+    <h5>Ingredients</h5>
+    <div class="mb-2">
+        <button type="button" class="btn btn-secondary" onclick="addIngredient()">+ Add Ingredient</button>
+    </div>
+
+    <div id="ingredients" style="position: relative;">
+        <?php foreach($dishItems as $di): ?>
+        <div class="d-flex mb-2 ingredient-row">
+            <input type="text" name="food_title[]" class="form-control me-2 food-search" placeholder="Search food..." value="<?php echo htmlspecialchars($di['title']); ?>" required autocomplete="off">
+            <input type="number" step="0.01" name="amount[]" class="form-control me-2 amount-input" value="<?php echo $di['amount']; ?>" required>
+            <button type="button" class="btn btn-danger" onclick="this.parentNode.remove(); updateTotal();">×</button>
+        </div>
+        <?php endforeach; ?>
+    </div>
+
+    <div class="d-flex gap-2 mt-3">
+        <button class="btn btn-primary">Save Dish</button>
+    </div>
 </form>
 </div>
 
@@ -235,4 +253,3 @@ updateTotal();
 </script>
 </body>
 </html>
-
