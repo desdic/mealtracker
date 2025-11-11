@@ -5,6 +5,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 require 'db.php';
+require_once 'user_preferences.php';
 
 $user_id = $_SESSION['user_id'];
 
@@ -12,8 +13,10 @@ if (!isset($_GET['id'])) {
     die('missing parameter');
 }
 
+$preferences = getUserPreferences($pdo, $user_id);
+
 $dish_id = (int)($_GET['id']);
-$dateformat = 'd/m/Y';
+$dateformat = $preferences['dateformat'];
 
 try {
 	$today = date($dateformat);

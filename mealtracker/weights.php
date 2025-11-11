@@ -6,10 +6,14 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$dateformat = 'd/m/Y';
-
 include('db.php');
+require_once 'user_preferences.php';
+
 $userid = $_SESSION['user_id'];
+
+$preferences = getUserPreferences($pdo, $userid);
+$dateformat = $preferences['dateformat'];
+
 $stmt = $pdo->prepare("SELECT * FROM weighttrack WHERE userid=? ORDER BY created ASC");
 $stmt->execute([$userid]);
 $weights = $stmt->fetchAll(PDO::FETCH_ASSOC);
