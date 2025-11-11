@@ -14,15 +14,15 @@ $userid = $_SESSION['user_id'];
 $preferences = getUserPreferences($pdo, $userid);
 $dateformat = $preferences['dateformat'];
 
-$stmt = $pdo->prepare("SELECT * FROM weighttrack WHERE userid=? ORDER BY created ASC");
+$stmt = $pdo->prepare("SELECT * FROM weighttrack WHERE userid=? ORDER BY created DESC");
 $stmt->execute([$userid]);
 $weights = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $weightDates = [];
 $weightValues = [];
 foreach($weights as $w){
-	$weightDates[] = date($dateformat, strtotime($w['created']));
-    $weightValues[] = $w['weight'];
+	$weightDates = [date($dateformat, strtotime($w['created'])), ...$weightDates];
+	$weightValues = [$w['weight'], ...$weightValues];
 }
 ?>
 <!DOCTYPE html>
