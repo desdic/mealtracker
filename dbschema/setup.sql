@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS mealday;
 DROP TABLE IF EXISTS mealtypes;
 DROP TABLE IF EXISTS food;
 DROP TABLE IF EXISTS weighttrack;
+DROP TABLE IF EXISTS user_preferences;
 DROP TABLE IF EXISTS user;
 
 CREATE TABLE user (
@@ -101,3 +102,11 @@ CREATE TABLE weighttrack(
 	primary key (id),
 	foreign key(userid) references user(id)
 );
+
+CREATE TABLE user_preferences (
+    user_id INT NOT NULL,
+    preference_key VARCHAR(50) NOT NULL,
+    preference_value VARCHAR(255) NOT NULL,
+    PRIMARY KEY(user_id, preference_key),
+    FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
