@@ -108,5 +108,15 @@ CREATE TABLE user_preferences (
     preference_key VARCHAR(50) NOT NULL,
     preference_value VARCHAR(255) NOT NULL,
     PRIMARY KEY(user_id, preference_key),
-    FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
+    FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE,
+) ENGINE=InnoDB;
+
+CREATE TABLE water_intake (
+	id INT not null AUTO_INCREMENT,
+	userid int not null,
+    mealdayid INT NOT NULL,
+    cups INT not null default 0,
+    PRIMARY KEY(id),
+    FOREIGN KEY(mealdayid) REFERENCES mealday(id) ON DELETE CASCADE,
+    FOREIGN KEY(userid) REFERENCES user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

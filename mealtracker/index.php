@@ -31,7 +31,12 @@ if(!$mealday){
 }
 $mealdayId = $mealday['id'];
 
-function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
+$stmt = $pdo->prepare("SELECT cups FROM water_intake WHERE mealdayid = ?");
+$stmt->execute([$mealdayId]);
+$waterIntake = $stmt->fetch(PDO::FETCH_ASSOC);
+$currentCups = $waterIntake ? intval($waterIntake['cups']) : 0;
+
+function renderMealItemRow($item, $theme) {
     $amount = floatval($item['amount']);
     $kcal = floatval($item['kcal']);
     $unit = floatval($item['unit']);
@@ -56,14 +61,15 @@ function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
 }
 ?>
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>"> <head>
+<html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>">
+<head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Meal Tracker</title>
 <link href="assets/bootstrap.min.css" rel="stylesheet">
 <style>
 .autocomplete-list { z-index: 1100; max-height: 200px; overflow-y: auto; }
-/* <--- MODIFIED: Conditional background colors for rows based on theme */
+/* Conditional background colors for rows based on theme */
 <?php if ($theme === 'dark'): ?>
 .meal-item-row-dark:nth-child(even){ background-color:#343a40; } /* bg-secondary darker */
 .meal-item-row-dark:nth-child(odd){ background-color:#212529; } /* bg-dark */
@@ -76,13 +82,53 @@ function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
 .meal-item-row{ padding:0.5rem; border-radius:0.25rem; margin-bottom:0.25rem; }
 .meal-item-food{ cursor:pointer; }
 .autocomplete-list .item { padding:0.3rem 0.5rem; cursor:pointer; }
-/* <--- MODIFIED: Autocomplete list hover */
+/* Autocomplete list hover */
 .autocomplete-list .item:hover { background:<?php echo $theme === 'dark' ? '#495057' : '#f1f1f1'; ?>; }
 .mealtype-header .collapse-toggle { transition: transform 0.2s; }
 .mealtype-header .collapse-toggle[aria-expanded="true"] { transform: rotate(180deg); }
+
+/* --- WATER TRACKER CSS (Empty Circle and Checkmark Icons) --- */
+.cup-icon {
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 0 0.25rem; 
+  /* Prevent blue highlight when selecting the emoji text content */
+  -webkit-user-select: none; /* Safari */
+  -moz-user-select: none; /* Firefox */
+  -ms-user-select: none; /* IE10+/Edge */
+  user-select: none; /* Standard syntax */
+}
+
+/* Force selection color to match card background for invisible selection */
+.card-body::selection {
+    background: <?php echo $theme === 'dark' ? '#343a40' : '#ffffff'; ?>;
+    color: transparent; /* Hide text color during selection */
+}
+.card-body::-moz-selection {
+    background: <?php echo $theme === 'dark' ? '#343a40' : '#ffffff'; ?>;
+    color: transparent;
+}
+
+/* --- MOBILE OPTIMIZATION for Water Tracker --- */
+@media (max-width: 576px) { 
+    .cup-icon {
+        /* Slightly reduce icon size on small screens */
+        font-size: 1.5rem; 
+        /* Reduce padding/margin to fit all 8 across */
+        padding: 0 0.15rem; 
+    }
+    .d-flex.justify-content-center {
+        /* Ensure the container itself can shrink */
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
+/* --- END WATER TRACKER CSS --- */
 </style>
 </head>
-<body class="<?php echo $theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'; ?>"> <nav class="navbar navbar-expand-lg <?php echo $theme === 'dark' ? 'navbar-dark bg-dark' : 'navbar-light bg-white'; ?> shadow-sm mb-3"> <div class="container-fluid">
+<body class="<?php echo $theme === 'dark' ? 'bg-dark text-light' : 'bg-light text-dark'; ?>">
+<nav class="navbar navbar-expand-lg <?php echo $theme === 'dark' ? 'navbar-dark bg-dark' : 'navbar-light bg-white'; ?> shadow-sm mb-3">
+    <div class="container-fluid">
         <a class="navbar-brand" href="#">MealTracker</a>
         <div class="ms-auto me-3">
             <?php echo htmlspecialchars($_SESSION['username']); ?>
@@ -123,7 +169,10 @@ function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
     $stmt->execute([$mealdayId, $mt['id']]);
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
-<div class="card mb-3 <?php echo $theme === 'dark' ? 'bg-secondary text-light border-light' : ''; ?>"> <div class="card-header mealtype-header d-flex justify-content-between align-items-center <?php echo $theme === 'dark' ? 'bg-dark border-light' : 'bg-white'; ?>"> <a href="add_mealitem.php?mealday=<?php echo $mealdayId; ?>&mealtype=<?php echo $mt['id']; ?>&date=<?php echo $date; ?>" class="text-decoration-none flex-grow-1 <?php echo $theme === 'dark' ? 'text-light' : 'text-dark'; ?>"> <strong><?php echo htmlspecialchars($mt['name']); ?> (<span id="total-kcal-<?php echo $mt['id']; ?>">0</span> kcal)</strong>
+<div class="card mb-3 <?php echo $theme === 'dark' ? 'bg-secondary text-light border-light' : ''; ?>">
+    <div class="card-header mealtype-header d-flex justify-content-between align-items-center <?php echo $theme === 'dark' ? 'bg-dark border-light' : 'bg-white'; ?>">
+        <a href="add_mealitem.php?mealday=<?php echo $mealdayId; ?>&mealtype=<?php echo $mt['id']; ?>&date=<?php echo $date; ?>" class="text-decoration-none flex-grow-1 <?php echo $theme === 'dark' ? 'text-light' : 'text-dark'; ?>">
+            <strong><?php echo htmlspecialchars($mt['name']); ?> (<span id="total-kcal-<?php echo $mt['id']; ?>">0</span> kcal)</strong>
         </a>
         <button class="btn btn-sm btn-outline-secondary collapse-toggle <?php echo $theme === 'dark' ? 'text-light border-light' : ''; ?>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-<?php echo $mt['id']; ?>" aria-expanded="false" aria-controls="collapse-<?php echo $mt['id']; ?>">
             &#9660;
@@ -131,17 +180,40 @@ function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
     </div>
     <div class="collapse" id="collapse-<?php echo $mt['id']; ?>">
         <div class="card-body" id="mealtype-<?php echo $mt['id']; ?>">
-            <?php foreach($items as $mi): echo renderMealItemRow($mi, $theme); endforeach; ?> </div>
+            <?php foreach($items as $mi): echo renderMealItemRow($mi, $theme); endforeach; ?>
+        </div>
     </div>
 </div>
 <?php endforeach; ?>
 
+<div class="card mb-3 <?php echo $theme === 'dark' ? 'bg-secondary text-light border-light' : ''; ?>">
+    <div class="card-header mealtype-header d-flex justify-content-between align-items-center <?php echo $theme === 'dark' ? 'text-light' : 'text-dark'; ?>">
+        <strong class="<?php echo $theme === 'dark' ? 'text-light' : 'text-dark'; ?>">💧 Water Intake (<span id="water-count-text"><?php echo $currentCups; ?></span> / 8 cups)</strong>
+    </div>
+    <div class="card-body text-center">
+        <div class="d-flex justify-content-center" id="cup-tracker-container" data-mealday-id="<?php echo $mealdayId; ?>">
+            <?php for ($i = 1; $i <= 8; $i++): ?>
+                <?php
+                // Use the appropriate emoji based on initial state
+                $emoji = ($i <= $currentCups) ? '✅' : '⚪';
+                $cupClass = ($i <= $currentCups) ? ' cup-full' : ''; // Keep the class for JS logic
+                ?>
+                <span class="cup-icon<?php echo $cupClass; ?> me-2" data-cup-index="<?php echo $i; ?>">
+                    <?php echo $emoji; ?>
+                </span>
+            <?php endfor; ?>
+        </div>
+    </div>
+</div>
 </div>
 
 <div class="modal fade" id="mealItemModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content <?php echo $theme === 'dark' ? 'bg-dark text-light' : ''; ?>"> <div class="modal-header <?php echo $theme === 'dark' ? 'border-secondary' : ''; ?>"> <h5 class="modal-title">Edit Meal Item</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" <?php echo $theme === 'dark' ? 'data-bs-theme="dark"' : ''; ?>></button> </div>
+        <div class="modal-content <?php echo $theme === 'dark' ? 'bg-dark text-light' : ''; ?>">
+            <div class="modal-header <?php echo $theme === 'dark' ? 'border-secondary' : ''; ?>">
+                <h5 class="modal-title">Edit Meal Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" <?php echo $theme === 'dark' ? 'data-bs-theme="dark"' : ''; ?>></button>
+            </div>
             <div class="modal-body">
                 <input type="hidden" id="modalMealType">
                 <input type="hidden" id="modalItemId">
@@ -157,7 +229,8 @@ function renderMealItemRow($item, $theme) { // <--- MODIFIED: Pass theme
                 </div>
                 <div class="mb-3">kcal: <span id="modalKcalPreview"></span></div>
             </div>
-            <div class="modal-footer <?php echo $theme === 'dark' ? 'border-secondary' : ''; ?>"> <button type="button" class="btn btn-primary" id="modalSaveBtn">Save</button>
+            <div class="modal-footer <?php echo $theme === 'dark' ? 'border-secondary' : ''; ?>">
+                <button type="button" class="btn btn-primary" id="modalSaveBtn">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             </div>
         </div>
@@ -296,6 +369,92 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 
     recalcTotals();
+
+
+    // --- WATER TRACKER JAVASCRIPT ---
+    const cupTracker = document.getElementById('cup-tracker-container');
+    const waterCountText = document.getElementById('water-count-text');
+    const cupIcons = document.querySelectorAll('#cup-tracker-container .cup-icon');
+    const mealDayId = cupTracker ? cupTracker.dataset.mealdayId : null;
+    const fullClass = 'cup-full'; // Custom class for the filled state
+    const emptyIcon = '⚪';
+    const fullIcon = '✅';
+    
+    /**
+     * Sends the new cup count to the server.
+     */
+    function updateWaterDatabase(newCount) {
+        if (!mealDayId) return;
+
+        fetch('ajax_update_water.php', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: `mealdayid=${encodeURIComponent(mealDayId)}&cups=${encodeURIComponent(newCount)}`
+        })
+        .then(r => r.text())
+        .then(txt => {
+            if (txt.trim() !== 'OK') {
+                console.error('Failed to update water intake:', txt);
+                alert('Failed to save water intake. Refreshing page.');
+                location.reload(); 
+            }
+        })
+        .catch(e => {
+            console.error('AJAX Error:', e);
+            alert('Error connecting to server for water update. Refreshing page.');
+            location.reload();
+        });
+    }
+
+    /**
+     * Updates the visual state based on a given count. Used for initial load and after clicks.
+     */
+    function updateWaterDisplay(consumedCount) {
+        waterCountText.textContent = consumedCount;
+        
+        cupIcons.forEach(cup => {
+             const cupIndex = parseInt(cup.getAttribute('data-cup-index'));
+             if (cupIndex <= consumedCount) {
+                 cup.classList.add(fullClass);
+                 cup.textContent = fullIcon; // Set to green checkmark
+             } else {
+                 cup.classList.remove(fullClass);
+                 cup.textContent = emptyIcon; // Set to empty circle
+             }
+         });
+    }
+
+    /**
+     * Handles the click event on any cup icon (Toggling logic).
+     */
+    if (cupTracker) {
+        cupTracker.addEventListener('click', function(event) {
+            const clickedCup = event.target;
+            
+            if (clickedCup.classList.contains('cup-icon')) {
+                // Toggle the visual state of the clicked cup by changing its class
+                clickedCup.classList.toggle(fullClass);
+                
+                // Recalculate the new total consumed cups by counting the 'full' ones
+                let newCount = 0;
+                cupIcons.forEach(cup => {
+                    if (cup.classList.contains(fullClass)) {
+                        newCount++;
+                    }
+                });
+                
+                // Update the display text, save to database, and update ALL icons
+                waterCountText.textContent = newCount;
+                updateWaterDatabase(newCount);
+                updateWaterDisplay(newCount); // Re-run to ensure all icons (including those before the clicked one) are correct
+            }
+        });
+    }
+    
+    // Initial display setup using the PHP-fetched value:
+    updateWaterDisplay(parseInt(waterCountText.textContent));
+    // --- END WATER TRACKER JAVASCRIPT ---
+
 });
 </script>
 </body>
