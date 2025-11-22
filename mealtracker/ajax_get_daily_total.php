@@ -2,7 +2,7 @@
 
 session_start();
 if (!isset($_SESSION['user_id'])) {
-    echo json_encode(['success' => false, 'message' => 'Unauthorized']);
+    header('Location: login.html');
     exit;
 }
 
@@ -27,5 +27,10 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute([$mealday,$userid]);
 $totals = $stmt->fetch(PDO::FETCH_ASSOC);
 
-echo number_format($totals["total_kcal"], 1, '.', '');
+echo json_encode([
+    'total_kcal'    => (float) number_format($totals["total_kcal"], 1, '.', ''),
+    'total_protein' => (float) number_format($totals["total_protein"], 1, '.', ''),
+    'total_carbs'   => (float) number_format($totals["total_carbs"], 1, '.', ''),
+    'total_fat'     => (float) number_format($totals["total_fat"], 1, '.', '')
+]);
 
