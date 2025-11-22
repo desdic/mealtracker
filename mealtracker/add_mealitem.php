@@ -143,7 +143,10 @@ body.bg-light, body.bg-dark { background-color: <?php echo $theme === 'dark' ? '
                     <label>Amount</label>
                     <input type="number" step="0.01" id="modalAmount" class="form-control">
                 </div>
-            </div>
+                
+                <div class="mb-3 d-none">Kcal: <span id="modalKcalPreview">0.0</span></div>
+                <div class="mb-3 d-none">Protein: <span id="modalProteinPreview">0.0</span>g | Carbs: <span id="modalCarbsPreview">0.0</span>g | Fat: <span id="modalFatPreview">0.0</span>g</div>
+                </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" id="modalSaveBtn">Save</button>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -317,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function(){
     window.modalSaveBtn = document.getElementById('modalSaveBtn');
     window.autocompleteList = modalEl.querySelector('.autocomplete-list');
     
-    // New modal preview elements
+    // Initialize modal preview elements (now that they exist in HTML)
     window.modalKcalPreview = document.getElementById('modalKcalPreview');
     window.modalProteinPreview = document.getElementById('modalProteinPreview');
     window.modalCarbsPreview = document.getElementById('modalCarbsPreview');
@@ -453,7 +456,6 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 
     // Initial fetch for Daily Totals
-    // Note: The original file had a direct fetch here, which is now replaced by recalcTotals calling the fetch.
     recalcTotals();
 });
 </script>
