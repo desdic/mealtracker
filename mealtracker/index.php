@@ -9,6 +9,9 @@ if (!isset($_SESSION['user_id'])) {
 include('db.php');
 require_once 'user_preferences.php';
 
+$expiry = time() + 172800; // 2 days
+setcookie(session_name(), session_id(), $expiry, "/");
+
 $userid = $_SESSION['user_id'];
 
 $preferences = getUserPreferences($pdo, $userid);
