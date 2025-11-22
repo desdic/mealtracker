@@ -5,9 +5,7 @@ ini_set('display_errors', 0);
 
 session_start();
 if (!isset($_SESSION['user_id'])) {
-	ob_end_clean(); 
-    http_response_code(401);
-    echo "Unauthorized"; 
+    header('Location: login.html');
     exit;
 }
 

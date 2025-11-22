@@ -6,12 +6,8 @@ ini_set('display_errors', 0);
 
 session_start();
 
-// 4. Authorization Check: MUST BE THE FIRST LOGIC
 if (!isset($_SESSION['user_id'])) {
-    ob_end_clean();
-    http_response_code(401);
-    header('Content-Type: application/json');
-    echo json_encode(["error" => "Unauthorized access. Please log in."]);
+    header('Location: login.html');
     exit;
 }
 
