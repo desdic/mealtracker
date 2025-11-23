@@ -24,7 +24,7 @@ if (!$itemId) {
     echo json_encode(["error" => "Missing item ID."]);
     exit;
 }
-
+// TOOD
 $stmt = $pdo->prepare("
 	SELECT 
         mi.id, mi.mealtype, mi.amount, mi.fooditem, 

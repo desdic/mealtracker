@@ -15,6 +15,7 @@ if (!$dish_id || !$food_id || $amount <= 0) {
 }
 
 require 'db.php';
+require_once("logging.php");
 
 try {
     $pdo->beginTransaction();
@@ -62,7 +63,8 @@ try {
     ]);
 
 } catch (Exception $e) {
+	log_error("failed adding dishitems: " . $e->getMessage());
     $pdo->rollBack();
-    echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
+    echo json_encode(['success'=>false,'message'=>'error']);
 }
 

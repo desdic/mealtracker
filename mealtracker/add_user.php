@@ -16,9 +16,7 @@ $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'] ?? 'light';
 
 if($_SERVER['REQUEST_METHOD']=='POST'){
-	$hash = password_hash($_POST['checksum'], PASSWORD_DEFAULT);
-    $stmt=$pdo->prepare("INSERT INTO user(username,firstname,lastname,checksum,disabled,isadmin) VALUES(?,?,?,?,?,?)");
-    $stmt->execute([$_POST['username'],$_POST['firstname'],$_POST['lastname'],$hash,isset($_POST['disabled'])?1:0,isset($_POST['isadmin'])?1:0]);
+	AddUser($pdo);
     header("Location: users.php"); exit;
 }
 ?>

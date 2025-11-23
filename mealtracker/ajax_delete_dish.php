@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require 'db.php';
+require_once("logging.php");
 
 $user_id = $_SESSION['user_id'];
 $dish_id = (int)($_POST['dish_id'] ?? 0);
@@ -18,25 +19,17 @@ if ($dish_id <= 0) {
 try {
     $pdo->beginTransaction();
 
-    $stmt = $pdo->prepare("SELECT addedby FROM dish WHERE id = ?");
-    $stmt->execute([$dish_id]);
-    $dish = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$dish || $dish['addedby'] != $user_id) {
-        throw new Exception('Dish not found or unauthorized');
-    }
-
-    $pdo->prepare("DELETE FROM dishitems WHERE dishid = ?")->execute([$dish_id]);
-
-    $pdo->prepare("DELETE FROM food WHERE dishid = ?")->execute([$dish_id]);
-
-    $pdo->prepare("DELETE FROM dish WHERE id = ?")->execute([$dish_id]);
+    $pdo->prepare("DELETE FROM dishitems WHERE dishid = ? and addedby = ?")->execute([$dish_id, $user_id]);
+    $pdo->prepare("DELETE FROM food WHERE dishid = ? and addedby = ?")->execute([$dish_id, $user_id]);
+    $pdo->prepare("DELETE FROM dish WHERE id = ? and addedby = ?")->execute([$dish_id, $user_id]);
 
     $pdo->commit();
     echo json_encode(['success' => true]);
 
 } catch (Exception $e) {
+	log_error("failed deleting dish: " . $e->getMessage());
     $pdo->rollBack();
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => 'error']);
 }
 ?>
 

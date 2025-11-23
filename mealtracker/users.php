@@ -10,12 +10,18 @@ if (!isset($_SESSION['isadmin']) || !$_SESSION['isadmin']) die('Access denied');
 
 include('db.php');
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $userid = $_SESSION['user_id'];
 $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'];
-
-$users = $pdo->query("SELECT * FROM user")->fetchAll(PDO::FETCH_ASSOC);
+try {
+	$users = $pdo->query("SELECT * FROM user")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed get users: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>">

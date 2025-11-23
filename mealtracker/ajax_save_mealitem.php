@@ -32,6 +32,7 @@ if(!$mealday || !$mealtype || !$fooditem || !$amount){
 
 $userid = $_SESSION['user_id'];
 
+// TOOD
 $stmt = $pdo->prepare("INSERT INTO mealitems (amount, mealday, fooditem, mealtype, userid) VALUES (?,?,?,?,?)");
 if (!$stmt->execute([$amount, $mealday, $fooditem, $mealtype, $userid])) {
 	ob_end_clean(); 

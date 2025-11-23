@@ -10,52 +10,13 @@ include('db.php');
 
 $userid = $_SESSION['user_id'];
 
-$allFoods = $pdo->query("SELECT * FROM food")->fetchAll(PDO::FETCH_ASSOC);
+$allFoods = GetFoods($pdo);
 
 if($_SERVER['REQUEST_METHOD']=='POST'){
     $dishName = $_POST['name'];
-    $addedBy = $userid;
-    $dishAmount = 0; // base amount for totals
+	$dishId = AddDish($pdo, $_POST['food_title'], $_POST['amount'], $dishName, $userid);
 
-    $kcal = 0; $protein=0; $carbs=0; $fat=0;
-
-    // calculate totals
-    foreach($_POST['food_title'] as $i => $title){
-        $amount = $_POST['amount'][$i];
-        $stmtFood = $pdo->prepare("SELECT * FROM food WHERE title=? AND unit=100 LIMIT 1");
-        $stmtFood->execute([$title]);
-        $food = $stmtFood->fetch(PDO::FETCH_ASSOC);
-        if($food){
-            $kcal += $food['kcal'] * $amount / $food['unit'];
-            $protein += $food['protein'] * $amount / $food['unit'];
-            $carbs += $food['carbs'] * $amount / $food['unit'];
-            $fat += $food['fat'] * $amount / $food['unit'];
-        }
-    }
-
-    // insert dish
-    $stmt = $pdo->prepare("INSERT INTO dish(name,addedby,kcal,protein,carbs,fat,amount) VALUES(?,?,?,?,?,?,?)");
-    $stmt->execute([$dishName,$addedBy,$kcal,$protein,$carbs,$fat,$dishAmount]);
-    $dishId = $pdo->lastInsertId();
-
-    // insert dishitems
-    foreach($_POST['food_title'] as $i => $title){
-        $amount = $_POST['amount'][$i];
-        $stmtFood = $pdo->prepare("SELECT * FROM food WHERE title=? AND unit=100 LIMIT 1");
-        $stmtFood->execute([$title]);
-        $food = $stmtFood->fetch(PDO::FETCH_ASSOC);
-        if($food){
-            $foodId = $food['id'];
-            $stmt = $pdo->prepare("INSERT INTO dishitems(dishid,fooditem,amount,addedby) VALUES(?,?,?,?)");
-            $stmt->execute([$dishId,$foodId,$amount,$userid]);
-        }
-    }
-
-    // insert food entry for this dish
-    $stmt = $pdo->prepare("INSERT INTO food(addedby,title,kcal,protein,carbs,fat,unit,dishid) VALUES(?,?,?,?,?,?,?,?)");
-    $stmt->execute([$addedBy,$dishName,$kcal,$protein,$carbs,$fat,1,$dishId]);
-
-    header("Location: dishes.php"); exit;
+    header("Location: edit_dish.php?id=".$dishId); exit;
 }
 ?>
 <!DOCTYPE html>

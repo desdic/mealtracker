@@ -8,12 +8,19 @@ if (!isset($_SESSION['user_id'])) {
 
 include('db.php');
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $userid = $_SESSION['user_id'];
 $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'];
 
-$foods = $pdo->query("SELECT * FROM food ORDER BY dishid, title")->fetchAll(PDO::FETCH_ASSOC);
+try {
+	$foods = $pdo->query("SELECT * FROM food ORDER BY dishid, title")->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed to get foods: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
+}
 
 // Define alternating classes based on the current theme
 $light_bg_even = 'bg-white';

@@ -7,64 +7,68 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include('db.php');
-// ADDED for theming
 require_once 'user_preferences.php';
 
 $dishId = $_GET['id'];
 $userid = $_SESSION['user_id'];
-// ADDED for theming
 $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'] ?? 'light';
 
-$stmt = $pdo->prepare("SELECT id FROM dish WHERE id=? and addedby=?");
-$stmt->execute([$dishId,$userid]);
-$dishid = $stmt->fetchColumn();
 
-if ($dishid != $dishId) {
-	die("you don't own this dish");
+try {
+	$stmt = $pdo->prepare("SELECT * FROM dish WHERE id=? and addedby=?");
+	$stmt->execute([$dishId, $userid]);
+	$dish = $stmt->fetch(PDO::FETCH_ASSOC);
+
+	$stmt = $pdo->prepare("SELECT di.*, f.title, f.kcal, f.unit FROM dishitems di JOIN food f ON di.fooditem=f.id WHERE di.dishid=?");
+	$stmt->execute([$dishId]);
+	$dishItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed getting dish: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
 }
-
-$stmt = $pdo->prepare("SELECT * FROM dish WHERE id=?");
-$stmt->execute([$dishId]);
-$dish = $stmt->fetch(PDO::FETCH_ASSOC);
-
-$stmt = $pdo->prepare("SELECT di.*, f.title, f.kcal, f.unit FROM dishitems di JOIN food f ON di.fooditem=f.id WHERE di.dishid=?");
-$stmt->execute([$dishId]);
-$dishItems = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if($_SERVER['REQUEST_METHOD']=='POST'){
     $dishName = $_POST['name'];
     $kcal = 0; $protein=0; $carbs=0; $fat=0;
     $totalAmount = 0;
 
-    $pdo->prepare("DELETE FROM dishitems WHERE dishid=? AND addedby=?")->execute([$dishId,$userid]);
+	try {
+		$pdo->prepare("DELETE FROM dishitems WHERE dishid=? AND addedby=?")->execute([$dishId,$userid]);
 
-    $titles = $_POST['food_title'] ?? [];
-    $amounts = $_POST['amount'] ?? [];
+		$titles = $_POST['food_title'] ?? [];
+		$amounts = $_POST['amount'] ?? [];
 
-    foreach($titles as $i => $title){
-        $amount = $amounts[$i] ?? 0;
-        $totalAmount += $amount;
-        $stmtFood = $pdo->prepare("SELECT * FROM food WHERE title=? AND unit=100 LIMIT 1");
-        $stmtFood->execute([$title]);
-        $food = $stmtFood->fetch(PDO::FETCH_ASSOC);
-        if($food){
-            $foodId = $food['id'];
-            $kcal += $food['kcal'] * $amount / $food['unit'];
-            $protein += $food['protein'] * $amount / $food['unit'];
-            $carbs += $food['carbs'] * $amount / $food['unit'];
-            $fat += $food['fat'] * $amount / $food['unit'];
+		foreach($titles as $i => $title){
+			$amount = $amounts[$i] ?? 0;
+			$totalAmount += $amount;
+			$stmtFood = $pdo->prepare("SELECT * FROM food WHERE title=? AND unit=100 LIMIT 1");
+			$stmtFood->execute([$title]);
+			$food = $stmtFood->fetch(PDO::FETCH_ASSOC);
+			if($food){
+				$foodId = $food['id'];
+				$kcal += $food['kcal'] * $amount / $food['unit'];
+				$protein += $food['protein'] * $amount / $food['unit'];
+				$carbs += $food['carbs'] * $amount / $food['unit'];
+				$fat += $food['fat'] * $amount / $food['unit'];
 
-            $stmtInsert = $pdo->prepare("INSERT INTO dishitems(dishid,fooditem,amount,addedby) VALUES(?,?,?,?)");
-            $stmtInsert->execute([$dishId,$foodId,$amount,$userid]);
-        }
-    }
+				$stmtInsert = $pdo->prepare("INSERT INTO dishitems(dishid,fooditem,amount,addedby) VALUES(?,?,?,?)");
+				$stmtInsert->execute([$dishId,$foodId,$amount,$userid]);
+			}
+		}
 
-    $stmt = $pdo->prepare("UPDATE dish SET name=?,kcal=?,protein=?,carbs=?,fat=?,amount=? WHERE id=?");
-    $stmt->execute([$dishName,$kcal,$protein,$carbs,$fat,$totalAmount,$dishId]);
+		$stmt = $pdo->prepare("UPDATE dish SET name=?,kcal=?,protein=?,carbs=?,fat=?,amount=? WHERE id=? and addedby=?");
+		$stmt->execute([$dishName,$kcal,$protein,$carbs,$fat,$totalAmount,$dishId,$userid]);
 
-    $stmt = $pdo->prepare("UPDATE food SET title=?,kcal=?,protein=?,carbs=?,fat=?,unit=? WHERE dishid=?");
-    $stmt->execute([$dishName,$kcal,$protein,$carbs,$fat,$totalAmount, $dishId]);
+		$stmt = $pdo->prepare("UPDATE food SET title=?,kcal=?,protein=?,carbs=?,fat=?,unit=? WHERE dishid=? and addedby=?");
+		$stmt->execute([$dishName,$kcal,$protein,$carbs,$fat,$totalAmount, $dishId,$userid]);
+
+	} catch (PDOException $e) {
+		log_error("failed editing dish: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
 
     header("Location: edit_dish.php?id=".$dishId);
     exit;
