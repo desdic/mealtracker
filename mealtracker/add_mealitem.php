@@ -20,17 +20,8 @@ $mealdayId = intval($_GET['mealday']);
 $mealtypeId = intval($_GET['mealtype']);
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
-$stmt = $pdo->prepare("SELECT * FROM mealtypes WHERE id=?");
-$stmt->execute([$mealtypeId]);
-$mealtype = $stmt->fetch(PDO::FETCH_ASSOC);
-
-// 1. PHP Query: Select macro nutrient columns
-$stmt = $pdo->prepare("SELECT mi.*, f.title, f.kcal, f.unit, f.protein, f.carbs, f.fat
-                        FROM mealitems mi
-                        JOIN food f ON mi.fooditem=f.id
-                        WHERE mi.mealday=? AND mi.mealtype=? and mi.userid=?");
-$stmt->execute([$mealdayId, $mealtypeId,$userid]);
-$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$mealtype = GetMealType($pdo, $mealtypeId);
+$items = GetMealItems($pdo, $mealdayId, $mealtypeId, $userid);
 
 // 2. Updated renderMealItemRow to include macro data
 function renderMealItemRow($item) {
