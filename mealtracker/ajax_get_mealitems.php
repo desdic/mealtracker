@@ -26,11 +26,15 @@ if (!$itemId) {
 }
 
 $stmt = $pdo->prepare("
-    SELECT mi.id, mi.mealtype, mi.amount, mi.fooditem, f.title, f.kcal, f.unit
-    FROM mealitems mi
-    JOIN food f ON mi.fooditem = f.id
-    WHERE mi.id = ? AND mi.userid = ?
+	SELECT 
+        mi.id, mi.mealtype, mi.amount, mi.fooditem, 
+        f.title, f.kcal, f.unit, 
+        f.protein, f.carbs, f.fat
+	FROM mealitems mi
+	JOIN food f ON mi.fooditem = f.id
+	WHERE mi.id = ? AND mi.userid = ?
 ");
+
 $stmt->execute([$itemId, $userid]);
 $item = $stmt->fetch(PDO::FETCH_ASSOC);
 
