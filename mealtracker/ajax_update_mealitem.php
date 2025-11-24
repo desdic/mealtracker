@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 include('db.php');
+require_once("logging.php");
 
 $id = $_POST['id'] ?? null;
 $amount = $_POST['amount'] ?? null;
@@ -15,12 +16,18 @@ if(!$id || !$amount){
     exit;
 }
 
-$stmt = $pdo->prepare("UPDATE mealitems SET amount=? WHERE id=?");
-$stmt->execute([$amount,$id]);
+try {
+	$stmt = $pdo->prepare("UPDATE mealitems SET amount=? WHERE id=?");
+	$stmt->execute([$amount,$id]);
 
-$stmt = $pdo->prepare("SELECT f.kcal, f.unit FROM mealitems mi JOIN food f ON mi.fooditem=f.id WHERE mi.id=?");
-$stmt->execute([$id]);
-$data = $stmt->fetch(PDO::FETCH_ASSOC);
+	$stmt = $pdo->prepare("SELECT f.kcal, f.unit FROM mealitems mi JOIN food f ON mi.fooditem=f.id WHERE mi.id=?");
+	$stmt->execute([$id]);
+	$data = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed updating mealitem: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
+}
 
 echo json_encode($data);
 

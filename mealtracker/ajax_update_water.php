@@ -10,6 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include('db.php');
+require_once("logging.php");
 
 if($_SERVER['REQUEST_METHOD'] !== 'POST'){
 	ob_end_clean(); 
@@ -47,8 +48,7 @@ try {
     if (!$stmt->execute([$cups, $mealdayId, $userId])) {
         ob_end_clean();
         http_response_code(500);
-        echo "Database operation failed";
-        exit;
+		die('error');
     }
 
     ob_end_clean(); 
@@ -57,8 +57,7 @@ try {
 } catch (PDOException $e) {
     ob_end_clean(); 
     http_response_code(500);
-    // Note: Logging $e->getMessage() instead of echoing is safer in production.
-    echo "Database error";
-    exit;
+	log_error("failed updating water intake: " . $e->getMessage());
+	die('error');
 }
 ?>

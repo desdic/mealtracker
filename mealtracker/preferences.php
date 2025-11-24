@@ -8,13 +8,19 @@ if (!isset($_SESSION['user_id'])) {
 
 require_once 'db.php';
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $userid = $_SESSION['user_id'];
 
-// --- Fetch user info ---
-$stmt = $pdo->prepare("SELECT username, firstname, lastname FROM user WHERE id = ?");
-$stmt->execute([$userid]);
-$user = $stmt->fetch(PDO::FETCH_ASSOC);
+try {
+	$stmt = $pdo->prepare("SELECT username, firstname, lastname FROM user WHERE id = ?");
+	$stmt->execute([$userid]);
+	$user = $stmt->fetch(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed getting user: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
+}
 if (!$user) die("User not found.");
 
 $preferences = getUserPreferences($pdo, $userid);
@@ -29,36 +35,42 @@ $message_profile = '';
 $message_prefs = '';
 
 if (isset($_POST['form_type']) && $_POST['form_type'] === 'profile') {
-    $firstname = trim($_POST['firstname']);
-    $lastname = trim($_POST['lastname']);
-    $new_password = $_POST['new_password'] ?? '';
-    $confirm_password = $_POST['confirm_password'] ?? '';
+	try {
+		$firstname = trim($_POST['firstname']);
+		$lastname = trim($_POST['lastname']);
+		$new_password = $_POST['new_password'] ?? '';
+		$confirm_password = $_POST['confirm_password'] ?? '';
 
-    if ($firstname === '' || $lastname === '') {
-        $message_profile = '<div class="alert alert-danger">First and last name cannot be empty.</div>';
-    } else {
-        $stmt = $pdo->prepare("UPDATE user SET firstname = ?, lastname = ? WHERE id = ?");
-        $stmt->execute([$firstname, $lastname, $userid]);
+		if ($firstname === '' || $lastname === '') {
+			$message_profile = '<div class="alert alert-danger">First and last name cannot be empty.</div>';
+		} else {
+			$stmt = $pdo->prepare("UPDATE user SET firstname = ?, lastname = ? WHERE id = ?");
+			$stmt->execute([$firstname, $lastname, $userid]);
 
-        if (!empty($new_password)) {
-            if ($new_password !== $confirm_password) {
-                $message_profile = '<div class="alert alert-danger">Passwords do not match.</div>';
-            } else {
-                $hash = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE user SET checksum = ? WHERE id = ?");
-                $stmt->execute([$hash, $userid]);
-                $message_profile = '<div class="alert alert-success">Password updated successfully.</div>';
-            }
-        }
+			if (!empty($new_password)) {
+				if ($new_password !== $confirm_password) {
+					$message_profile = '<div class="alert alert-danger">Passwords do not match.</div>';
+				} else {
+					$hash = password_hash($new_password, PASSWORD_DEFAULT);
+					$stmt = $pdo->prepare("UPDATE user SET checksum = ? WHERE id = ?");
+					$stmt->execute([$hash, $userid]);
+					$message_profile = '<div class="alert alert-success">Password updated successfully.</div>';
+				}
+			}
 
-        if (empty($message_profile)) {
-            $message_profile = '<div class="alert alert-success">Profile updated successfully.</div>';
-        }
+			if (empty($message_profile)) {
+				$message_profile = '<div class="alert alert-success">Profile updated successfully.</div>';
+			}
 
-        $stmt = $pdo->prepare("SELECT username, firstname, lastname FROM user WHERE id = ?");
-        $stmt->execute([$userid]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
+			$stmt = $pdo->prepare("SELECT username, firstname, lastname FROM user WHERE id = ?");
+			$stmt->execute([$userid]);
+			$user = $stmt->fetch(PDO::FETCH_ASSOC);
+		}
+	} catch (PDOException $e) {
+		log_error("failed updating user: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
 }
 
 if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
@@ -67,16 +79,22 @@ if (isset($_POST['form_type']) && $_POST['form_type'] === 'preferences') {
         'theme' => $_POST['theme'] ?? 'light'
     ];
 
-    $stmt = $pdo->prepare("
-        INSERT INTO user_preferences (user_id, preference_key, preference_value)
-        VALUES (?, ?, ?)
-        ON DUPLICATE KEY UPDATE preference_value = VALUES(preference_value)
-    ");
+	try {
+		$stmt = $pdo->prepare("
+			INSERT INTO user_preferences (user_id, preference_key, preference_value)
+			VALUES (?, ?, ?)
+			ON DUPLICATE KEY UPDATE preference_value = VALUES(preference_value)
+			");
 
-    foreach ($new_prefs as $key => $value) {
-        $stmt->execute([$userid, $key, $value]);
-        $preferences[$key] = $value;
-    }
+		foreach ($new_prefs as $key => $value) {
+			$stmt->execute([$userid, $key, $value]);
+			$preferences[$key] = $value;
+		}
+	} catch (PDOException $e) {
+		log_error("failed updating user preferences: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
 
     $message_prefs = '<div class="alert alert-success">Preferences updated successfully.</div>';
 }

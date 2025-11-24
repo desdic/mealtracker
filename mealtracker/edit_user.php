@@ -9,6 +9,8 @@ if (!isset($_SESSION['user_id'])) {
 if (!isset($_SESSION['isadmin']) || !$_SESSION['isadmin']) die('Access denied');
 
 include('db.php');
+require_once("logging.php");
+
 $id=$_GET['id'];
 $stmt=$pdo->prepare("SELECT * FROM user WHERE id=?");
 $stmt->execute([$id]); 
@@ -22,18 +24,24 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
         $hash = $user['checksum']; // keep existing hash
     }
 
-    $stmt=$pdo->prepare("UPDATE user SET username=?, firstname=?, lastname=?, checksum=?, disabled=?, isadmin=? WHERE id=?");
-    $stmt->execute([
-        $_POST['username'],
-        $_POST['firstname'],
-        $_POST['lastname'],
-        $hash,
-        isset($_POST['disabled'])?1:0,
-        isset($_POST['isadmin'])?1:0,
-        $id
-    ]);
-    header("Location: users.php"); 
-    exit;
+	try {
+		$stmt=$pdo->prepare("UPDATE user SET username=?, firstname=?, lastname=?, checksum=?, disabled=?, isadmin=? WHERE id=?");
+		$stmt->execute([
+			$_POST['username'],
+			$_POST['firstname'],
+			$_POST['lastname'],
+			$hash,
+			isset($_POST['disabled'])?1:0,
+			isset($_POST['isadmin'])?1:0,
+			$id
+		]);
+		header("Location: users.php"); 
+		exit;
+	} catch (PDOException $e) {
+		log_error("failed updating user: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
 }
 ?>
 <!DOCTYPE html>

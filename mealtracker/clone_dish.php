@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 require 'db.php';
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $user_id = $_SESSION['user_id'];
 
@@ -59,9 +60,9 @@ try {
     $pdo->commit();
 
     header("Location: dishes.php"); exit;
-
 } catch (Exception $e) {
     $pdo->rollBack();
-	die("Database error: " . $e->getMessage());
+	log_error("failed to add/update weight: " . $e->getMessage());
+	die("error");
 }
 

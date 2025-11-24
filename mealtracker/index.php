@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 
 include('db.php');
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $expiry = time() + 172800; // 2 days
 setcookie(session_name(), session_id(), $expiry, "/");
@@ -21,23 +22,29 @@ $dateformat = $preferences['dateformat'];
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 $formattedDate = date($dateformat, strtotime($date));
 
-$mealtypes = $pdo->query("SELECT * FROM mealtypes ORDER BY rank")->fetchAll(PDO::FETCH_ASSOC);
+try {
+	$mealtypes = $pdo->query("SELECT * FROM mealtypes ORDER BY rank")->fetchAll(PDO::FETCH_ASSOC);
 
-$stmt = $pdo->prepare("SELECT * FROM mealday WHERE userid=? AND date=?");
-$stmt->execute([$userid,$date]);
-$mealday = $stmt->fetch(PDO::FETCH_ASSOC);
-if(!$mealday){
-    $pdo->prepare("INSERT INTO mealday(userid,date) VALUES(?,?)")->execute([$userid,$date]);
-    $stmt = $pdo->prepare("SELECT * FROM mealday WHERE userid=? AND date=?");
-    $stmt->execute([$userid,$date]);
-    $mealday = $stmt->fetch(PDO::FETCH_ASSOC);
+	$stmt = $pdo->prepare("SELECT * FROM mealday WHERE userid=? AND date=?");
+	$stmt->execute([$userid,$date]);
+	$mealday = $stmt->fetch(PDO::FETCH_ASSOC);
+	if(!$mealday){
+		$pdo->prepare("INSERT INTO mealday(userid,date) VALUES(?,?)")->execute([$userid,$date]);
+		$stmt = $pdo->prepare("SELECT * FROM mealday WHERE userid=? AND date=?");
+		$stmt->execute([$userid,$date]);
+		$mealday = $stmt->fetch(PDO::FETCH_ASSOC);
+	}
+	$mealdayId = $mealday['id'];
+
+	$stmt = $pdo->prepare("SELECT cups FROM water_intake WHERE mealdayid = ?");
+	$stmt->execute([$mealdayId]);
+	$waterIntake = $stmt->fetch(PDO::FETCH_ASSOC);
+	$currentCups = $waterIntake ? intval($waterIntake['cups']) : 0;
+} catch (PDOException $e) {
+	log_error("failed to fetch index data: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
 }
-$mealdayId = $mealday['id'];
-
-$stmt = $pdo->prepare("SELECT cups FROM water_intake WHERE mealdayid = ?");
-$stmt->execute([$mealdayId]);
-$waterIntake = $stmt->fetch(PDO::FETCH_ASSOC);
-$currentCups = $waterIntake ? intval($waterIntake['cups']) : 0;
 
 function renderMealItemRow($item, $theme) {
     $amount = floatval($item['amount']);

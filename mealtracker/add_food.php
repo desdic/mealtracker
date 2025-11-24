@@ -9,12 +9,20 @@ $userid = $_SESSION['user_id'];
 
 include('db.php');
 require_once 'user_preferences.php';
+require_once("logging.php");
+
 $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'] ?? 'light';
 
 if($_SERVER['REQUEST_METHOD']=='POST'){
-    $stmt=$pdo->prepare("INSERT INTO food (addedby,title,kcal,protein,carbs,fat,unit) VALUES (?,?,?,?,?,?,?)");
-    $stmt->execute([$userid, $_POST['title'],$_POST['kcal'],$_POST['protein'],$_POST['carbs'],$_POST['fat'],$_POST['unit']]);
+	try {
+		$stmt=$pdo->prepare("INSERT INTO food (addedby,title,kcal,protein,carbs,fat,unit) VALUES (?,?,?,?,?,?,?)");
+		$stmt->execute([$userid, $_POST['title'],$_POST['kcal'],$_POST['protein'],$_POST['carbs'],$_POST['fat'],$_POST['unit']]);
+	} catch (PDOException $e) {
+		log_error("failed to add food: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
     header("Location: foods.php"); 
     exit;
 }
@@ -33,9 +41,9 @@ if($_SERVER['REQUEST_METHOD']=='POST'){
 <form method="post">
   <div class="mb-3"><label>Title</label><input type="text" name="title" class="form-control" required></div>
   <div class="mb-3"><label>Kcal</label><input type="number" name="kcal" class="form-control" required></div>
-  <div class="mb-3"><label>Protein</label><input type="number" step="0.01" name="protein" class="form-control" required></div>
-  <div class="mb-3"><label>Carbs</label><input type="number" step="0.01" name="carbs" class="form-control" required></div>
   <div class="mb-3"><label>Fat</label><input type="number" step="0.01" name="fat" class="form-control" required></div>
+  <div class="mb-3"><label>Carbs</label><input type="number" step="0.01" name="carbs" class="form-control" required></div>
+  <div class="mb-3"><label>Protein</label><input type="number" step="0.01" name="protein" class="form-control" required></div>
   <div class="mb-3"><label>Unit</label><input type="number" step="0.01" name="unit" class="form-control" required></div>
   <button class="btn btn-primary">Add</button>
   <a href="foods.php" class="btn <?php echo $theme==='dark'?'btn-outline-light':'btn-secondary'; ?>">Back</a>

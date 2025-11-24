@@ -6,6 +6,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 require 'db.php';
+require_once("logging.php");
 
 $item_id = $_POST['item_id'] ?? 0;
 $amount = $_POST['amount'] ?? 1;
@@ -57,6 +58,7 @@ try {
 
 } catch (Exception $e) {
     $pdo->rollBack();
-    echo json_encode(['success'=>false,'message'=>$e->getMessage()]);
+	log_error("failed updating item: " . $e->getMessage());
+    echo json_encode(['success'=>false,'message'=>'error']);
 }
 

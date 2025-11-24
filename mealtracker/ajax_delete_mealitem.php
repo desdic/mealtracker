@@ -8,6 +8,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include('db.php');
+require_once("logging.php");
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(400);
@@ -24,13 +25,18 @@ if (!$id) {
 
 $userid = $_SESSION['user_id'];
 
-$stmt = $pdo->prepare("DELETE FROM mealitems WHERE id = ? AND userid = ?");
-$ok = $stmt->execute([$id, $userid]);
+try {
+	$stmt = $pdo->prepare("DELETE FROM mealitems WHERE id = ? AND userid = ?");
+	$ok = $stmt->execute([$id, $userid]);
 
-if ($ok && $stmt->rowCount() > 0) {
-    echo 'OK';
-} else {
-    http_response_code(404);
-    echo 'Not found or not deleted';
+	if ($ok && $stmt->rowCount() > 0) {
+		echo 'OK';
+	} else {
+		http_response_code(404);
+		echo 'Not found or not deleted';
+	}
+} catch (PDOException $e) {
+	log_error("failed deleting user: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
 }
-

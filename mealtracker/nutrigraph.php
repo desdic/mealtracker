@@ -7,26 +7,33 @@ if (!isset($_SESSION['user_id'])) {
 
 require 'db.php';
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $userid = $_SESSION['user_id'];
 $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'];
 
-$stmt = $pdo->prepare("
-    SELECT d.date, 
-           SUM(ROUND(i.amount / f.unit * f.kcal, 1)) AS kcal,
-           SUM(ROUND(i.amount / f.unit * f.protein, 1)) AS protein,
-           SUM(ROUND(i.amount / f.unit * f.carbs, 1)) AS carbs,
-           SUM(ROUND(i.amount / f.unit * f.fat, 1)) AS fat
-    FROM mealitems i
-    JOIN mealday d ON d.id = i.mealday
-    JOIN food f ON f.id = i.fooditem
-    WHERE d.userid = ?
-    GROUP BY d.date
-    ORDER BY d.date
-");
-$stmt->execute([$userid]);
-$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+	$stmt = $pdo->prepare("
+		SELECT d.date, 
+		SUM(ROUND(i.amount / f.unit * f.kcal, 1)) AS kcal,
+		SUM(ROUND(i.amount / f.unit * f.protein, 1)) AS protein,
+		SUM(ROUND(i.amount / f.unit * f.carbs, 1)) AS carbs,
+		SUM(ROUND(i.amount / f.unit * f.fat, 1)) AS fat
+		FROM mealitems i
+		JOIN mealday d ON d.id = i.mealday
+		JOIN food f ON f.id = i.fooditem
+		WHERE d.userid = ?
+		GROUP BY d.date
+		ORDER BY d.date
+		");
+	$stmt->execute([$userid]);
+	$data = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed getting nutritions: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
+}
 
 $dates = [];
 $kcal = [];

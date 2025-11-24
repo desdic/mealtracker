@@ -7,6 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 
 include 'db.php';
 require_once 'user_preferences.php';
+require_once("logging.php");
 
 $user_id = $_SESSION['user_id'];
 $preferences = getUserPreferences($pdo, $user_id);
@@ -18,28 +19,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $weight = $_POST['weight'];
     $created = $_POST['created'] ?? date($dateformat);
 
-    if ($id) {
-        $stmt = $pdo->prepare("UPDATE weighttrack SET weight = ?, created = ? WHERE id = ? AND userid=?");
-        $stmt->execute([$weight, $created, $id, $user_id]);
-    } else {
-        $stmt = $pdo->prepare("INSERT INTO weighttrack (weight, created, userid) VALUES (?, ?, ?)");
-        $stmt->execute([$weight, $created, $user_id]);
-    }
-    header("Location: weights.php");
-    exit;
+	try {
+		if ($id) {
+			$stmt = $pdo->prepare("UPDATE weighttrack SET weight = ?, created = ? WHERE id = ? AND userid=?");
+			$stmt->execute([$weight, $created, $id, $user_id]);
+		} else {
+			$stmt = $pdo->prepare("INSERT INTO weighttrack (weight, created, userid) VALUES (?, ?, ?)");
+			$stmt->execute([$weight, $created, $user_id]);
+		}
+		header("Location: weights.php");
+		exit;
+	} catch (PDOException $e) {
+		log_error("failed to add/update weight: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
 }
 
 if (isset($_GET['delete'])) {
-    $id = $_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM weighttrack WHERE id = ? AND userid = ?");
-    $stmt->execute([$id, $user_id]);
-    header("Location: weights.php");
-    exit;
+	try {
+		$id = $_GET['delete'];
+		$stmt = $pdo->prepare("DELETE FROM weighttrack WHERE id = ? AND userid = ?");
+		$stmt->execute([$id, $user_id]);
+		header("Location: weights.php");
+		exit;
+	} catch (PDOException $e) {
+		log_error("failed delete weight: " . $e->getMessage());
+		http_response_code(500);
+		die("error");
+	}
 }
 
-$stmt = $pdo->prepare("SELECT * FROM weighttrack WHERE userid = ? ORDER BY created DESC");
-$stmt->execute([$user_id]);
-$entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+try {
+	$stmt = $pdo->prepare("SELECT * FROM weighttrack WHERE userid = ? ORDER BY created DESC");
+	$stmt->execute([$user_id]);
+	$entries = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+	log_error("failed to get weight: " . $e->getMessage());
+	http_response_code(500);
+	die("error");
+}
 
 $dates = [];
 $weights = [];
@@ -53,7 +72,7 @@ foreach (array_reverse($entries) as $row) {
 <html lang="en" data-bs-theme="<?php echo htmlspecialchars($theme); ?>">
 <head>
     <meta charset="UTF-8">
-    <title>Vægt</title>
+    <title>Weight</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="assets/bootstrap.min.css" rel="stylesheet">
     <script src="assets/chart.js"></script>

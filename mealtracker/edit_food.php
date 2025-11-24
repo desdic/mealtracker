@@ -14,6 +14,7 @@ $userid = $_SESSION['user_id'];
 $preferences = getUserPreferences($pdo, $userid);
 $theme = $preferences['theme'] ?? 'light';
 
+// TOOD
 $stmt = $pdo->prepare("SELECT * FROM food WHERE id=?");
 $stmt->execute([$id]);
 $food = $stmt->fetch(PDO::FETCH_ASSOC);
