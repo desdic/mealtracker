@@ -44,9 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <form method="post">
   <div class="mb-3"><label>Title</label><input type="text" name="title" class="form-control" value="<?php echo htmlspecialchars($food['title']); ?>" required></div>
   <div class="mb-3"><label>Kcal</label><input type="number" name="kcal" class="form-control" value="<?php echo $food['kcal']; ?>" required></div>
-  <div class="mb-3"><label>Protein</label><input type="number" step="0.01" name="protein" class="form-control" value="<?php echo $food['protein']; ?>" required></div>
-  <div class="mb-3"><label>Carbs</label><input type="number" step="0.01" name="carbs" class="form-control" value="<?php echo $food['carbs']; ?>" required></div>
   <div class="mb-3"><label>Fat</label><input type="number" step="0.01" name="fat" class="form-control" value="<?php echo $food['fat']; ?>" required></div>
+  <div class="mb-3"><label>Carbs</label><input type="number" step="0.01" name="carbs" class="form-control" value="<?php echo $food['carbs']; ?>" required></div>
+  <div class="mb-3"><label>Protein</label><input type="number" step="0.01" name="protein" class="form-control" value="<?php echo $food['protein']; ?>" required></div>
   <div class="mb-3"><label>Unit</label><input type="number" step="0.01" name="unit" class="form-control" value="<?php echo $food['unit']; ?>" required></div>
   <button class="btn btn-primary">Save</button>
   <a href="foods.php" class="btn <?php echo $theme==='dark'?'btn-outline-light':'btn-secondary'; ?>">Back</a>
